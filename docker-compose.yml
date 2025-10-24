@@ -1,0 +1,53 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: invoice-ddd-app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - invoice-network
+    depends_on:
+      - db
+
+  nginx:
+    image: nginx:alpine
+    container_name: invoice-ddd-nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - invoice-network
+    depends_on:
+      - app
+
+  db:
+    image: mysql:8.0
+    container_name: invoice-ddd-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: invoice_ddd
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_USER: invoice_user
+      MYSQL_PASSWORD: invoice_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - invoice-network
+
+networks:
+  invoice-network:
+    driver: bridge
+
+volumes:
+  db_data:
+    driver: local

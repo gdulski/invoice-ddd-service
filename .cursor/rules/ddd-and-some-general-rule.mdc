@@ -1,0 +1,306 @@
+---
+alwaysApply: true
+---
+# Cursor AI Rules - Domain-Driven Design & Laravel Best Practices
+
+## 🎯 Project Context
+This is an Invoice Management System built with Laravel following Domain-Driven Design principles. The application handles invoice creation, sending via notifications, and status management through event-driven architecture.
+
+## 🏗️ Architecture Principles
+
+### Domain-Driven Design (DDD)
+- **Domain Layer is the heart** - All business logic must reside in Domain layer
+- **Domain must be framework-agnostic** - No Laravel dependencies in Domain layer (no Eloquent, no facades)
+- **Rich Domain Models** - Entities should contain behavior, not just data
+- **Value Objects** - Use immutable value objects for concepts like Money, Quantity, Status
+- **Domain Events** - Emit events for significant domain occurrences
+- **Ubiquitous Language** - Use business terminology consistently across all layers
+
+### Layered Architecture
+
+```
+Interfaces → Application → Domain ← Infrastructure
+```
+
+**Dependency Rule**: Dependencies point INWARD. Domain has NO dependencies on outer layers.
+
+#### 1. Domain Layer (app/Domain/)
+- **Purpose**: Pure business logic, entities, value objects, domain services
+- **Rules**:
+  - NO framework dependencies (no Eloquent, no Request, no facades)
+  - NO database concerns (no migrations, no SQL)
+  - Only pure PHP and business rules
+  - All validation of business rules happens here
+  - Use constructor for entity creation to ensure valid state
+  - Entities must protect their invariants (always valid state)
+
+#### 2. Application Layer (app/Application/)
+- **Purpose**: Use cases, orchestration, application services
+- **Rules**:
+  - Coordinates Domain objects to fulfill use cases
+  - Uses Commands/Queries for input
+  - Uses DTOs for output
+  - Handles transactions
+  - NO business logic here - delegate to Domain
+  - Thin handlers - just orchestration
+
+#### 3. Infrastructure Layer (app/Infrastructure/)
+- **Purpose**: Technical implementations (database, APIs, file system)
+- **Rules**:
+  - Implements Domain interfaces (repositories)
+  - Maps between Domain models and persistence models (Eloquent)
+  - Contains all framework-specific code for persistence
+  - Should be swappable without affecting Domain
+
+#### 4. Interfaces Layer (app/Interfaces/)
+- **Purpose**: Entry points (HTTP, CLI, Queue workers)
+- **Rules**:
+  - Controllers are thin - just call Application handlers
+  - Validation of HTTP input (FormRequests)
+  - Formatting of responses (Resources)
+  - NO business logic here
+
+## 💎 Code Quality Standards
+
+### SOLID Principles
+- **Single Responsibility**: One class = one reason to change
+  - Example: `InvoiceRepository` only handles persistence, not business logic
+  - Bad: A class that validates, saves, and sends emails
+  - Good: Separate classes for each responsibility
+  
+- **Open/Closed**: Open for extension, closed for modification
+  - Use interfaces and inheritance for extensibility
+  - Example: `NotificationProvider` interface allows adding new providers without modifying existing code
+  - Bad: Modifying existing class to add new notification channel
+  - Good: Create new class implementing `NotificationProvider` interface
+  
+- **Liskov Substitution**: Subtypes must be substitutable for their base types
+  - Any implementation of `InvoiceRepositoryInterface` should work identically from caller's perspective
+  - Bad: Subclass that throws exceptions for methods that parent doesn't
+  - Good: All implementations honor the contract
+  
+- **Interface Segregation**: Many specific interfaces > one general interface
+  - Example: `InvoiceReader` and `InvoiceWriter` instead of one `InvoiceRepository`
+  - Bad: Interface with 20 methods where most clients use only 2-3
+  - Good: Split into smaller, focused interfaces
+  
+- **Dependency Inversion**: Depend on abstractions, not concretions
+  - Domain depends on `InvoiceRepositoryInterface`, not `EloquentInvoiceRepository`
+  - Bad: `new EloquentInvoiceRepository()` in business logic
+  - Good: Inject `InvoiceRepositoryInterface` via constructor
+
+### Fundamental Design Principles
+
+- **KISS (Keep It Simple, Stupid)**
+  - Simplicity is the ultimate sophistication
+  - Choose the simplest solution that solves the problem
+  - Example: Use a simple array instead of complex data structure if array suffices
+  - Bad: Over-engineered solution with 5 design patterns for a simple feature
+  - Good: Straightforward code that's easy to understand and maintain
+  - Ask yourself: "Is there a simpler way to achieve this?"
+  
+- **DRY (Don't Repeat Yourself)**
+  - Every piece of knowledge should have a single, unambiguous representation
+  - Duplication is not just about code - it's about knowledge and intent
+  - Example: Business rule "invoice can be sent only in draft status" should exist in ONE place
+  - Bad: Same validation logic copied in Controller, Service, and Model
+  - Good: Validation in `Invoice::canBeSent()` method, used everywhere
+  - Exception: Don't DRY too early - wait for third occurrence (Rule of Three)
+  
+- **YAGNI (You Aren't Gonna Need It)**
+  - Don't implement features until they are actually needed
+  - Resist the temptation to add "future-proofing" that might never be used
+  - Example: Don't add "invoice cancellation" feature if it's not in requirements
+  - Bad: Building elaborate plugin system "in case we need it later"
+  - Good: Implement only what's needed now, refactor when requirements change
+  - Remember: Code that doesn't exist has no bugs and needs no maintenance
+
+### Clean Code Practices
+
+#### Naming Conventions
+- **Classes**: PascalCase, descriptive nouns (e.g., `InvoiceSendingService`)
+- **Methods**: camelCase, descriptive verbs (e.g., `markAsSending()`)
+- **Variables**: camelCase, meaningful names (avoid `$data`, `$temp`)
+- **Constants**: UPPER_SNAKE_CASE
+- **Booleans**: Prefix with `is`, `has`, `can` (e.g., `isValid()`, `canBeSent()`)
+
+#### Method Guidelines
+- **Keep methods short** - Max 20 lines, ideally under 10
+- **Single level of abstraction** per method
+- **Max 3 parameters** - use Parameter Objects if more needed
+- **Early returns** - Guard clauses at the top
+- **No flag arguments** - Split into separate methods instead
+
+#### Comments & Documentation
+- **Code should be self-documenting** - Good names > comments
+- **Comment "why", not "what"**
+- **PHPDoc for public methods** - Especially interfaces
+- **No commented-out code** - Delete it, Git remembers
+
+### Type Safety
+- **Always use strict types**: `declare(strict_types=1);` at the top of every file
+- **Type hint everything**: parameters, return types, properties
+- **Use PHP 8+ features**: constructor property promotion, readonly properties, named arguments
+- **Avoid mixed types** - Be explicit about types
+
+### Error Handling
+- **Use custom exceptions** for domain errors (e.g., `InvalidInvoiceStatusException`)
+- **Never catch generic Exception** - Catch specific exceptions
+- **Fail fast** - Validate early, throw exceptions for invalid states
+- **Domain exceptions** should be in Domain layer
+- **Never use exceptions for flow control**
+
+## 🧪 Testing Standards
+
+### Unit Tests
+- **Test behavior, not implementation**
+- **One assertion per test** (or closely related assertions)
+- **AAA pattern**: Arrange, Act, Assert
+- **Mock external dependencies** (repositories, services)
+- **Test edge cases and error conditions**
+- **Test names should be descriptive**: `test_invoice_cannot_be_sent_when_status_is_not_draft()`
+
+### Test Coverage
+- **Domain layer**: 100% coverage - this is critical
+- **Application layer**: 90%+ coverage
+- **Infrastructure**: Integration tests, not unit tests
+- **Controllers**: Feature tests, not unit tests
+
+## 📝 Laravel-Specific Best Practices
+
+### Eloquent (Infrastructure Only!)
+- **Never use Eloquent in Domain** - Use repository pattern
+- **Fat models, skinny controllers** doesn't apply to DDD - Keep Eloquent models thin
+- **Eloquent models are DTOs** in DDD - Just data containers
+- **Use explicit mapping** between Domain and Eloquent models
+
+### Service Providers
+- **Bind interfaces to implementations** in service providers
+- **Register repositories** in `InvoiceServiceProvider`
+- **Keep providers organized** by domain context
+
+### Validation
+- **HTTP validation**: FormRequests (Interfaces layer)
+- **Business validation**: Domain entities (Domain layer)
+- **They serve different purposes** - Both are needed
+
+### Database
+- **Migrations**: Follow naming convention `create_table_name_table.php`
+- **Use UUIDs** for primary keys when appropriate
+- **Foreign keys** should have proper constraints
+- **Indexes** on frequently queried columns
+
+## 🚫 Anti-Patterns to Avoid
+
+### General Anti-Patterns
+- ❌ Anemic Domain Model (entities with only getters/setters)
+- ❌ God Classes (classes doing too much)
+- ❌ Magic numbers/strings (use constants or enums)
+- ❌ Deeply nested code (max 3 levels)
+- ❌ Long parameter lists (use Parameter Objects)
+- ❌ Primitive obsession (use Value Objects)
+
+### DDD Anti-Patterns
+- ❌ Business logic in controllers
+- ❌ Business logic in repositories
+- ❌ Domain depending on Infrastructure
+- ❌ Using Eloquent models as Domain entities
+- ❌ Exposing internal entity state via getters unnecessarily
+
+### Laravel Anti-Patterns
+- ❌ Using facades in Domain layer
+- ❌ Static calls in testable code
+- ❌ Helper functions in business logic (use services)
+- ❌ Eloquent relationships in Domain layer
+
+## 🎨 Code Style
+
+### PSR Standards
+- Follow **PSR-12** coding standard
+- Use **PSR-4** autoloading
+- Line length: Max 120 characters
+
+### File Structure
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Invoice\Models;
+
+use App\Domain\Invoice\ValueObjects\InvoiceStatus;
+use App\Domain\Invoice\ValueObjects\InvoiceId;
+
+class Invoice
+{
+    // Properties first (with visibility)
+    
+    // Constructor
+    
+    // Public methods
+    
+    // Private methods
+}
+```
+
+### Method Order in Classes
+1. Constants
+2. Properties
+3. Constructor
+4. Static factory methods
+5. Public methods (alphabetically)
+6. Protected methods (alphabetically)
+7. Private methods (alphabetically)
+
+## 🔐 Security Best Practices
+- **Never trust user input** - Always validate
+- **Use parameter binding** for database queries (Eloquent does this)
+- **Sanitize output** when rendering
+- **Use CSRF protection** (Laravel default)
+- **Validate file uploads** properly
+- **Use proper authentication/authorization**
+
+## ⚡ Performance Considerations
+- **Eager load relationships** to avoid N+1 queries
+- **Use database indexes** appropriately
+- **Cache expensive operations** when appropriate
+- **Use queues** for long-running tasks
+- **Avoid loading unnecessary data**
+
+## 📋 Pre-Commit Checklist
+Before committing code, ensure:
+- [ ] All tests pass
+- [ ] No dead/commented code
+- [ ] Proper type hints everywhere
+- [ ] No hardcoded values (use config)
+- [ ] Meaningful variable/method names
+- [ ] No violations of SOLID principles
+- [ ] Domain layer has no framework dependencies
+- [ ] New code has appropriate tests
+- [ ] PHPStan/Larastan passes (if configured)
+
+## 🎓 When in Doubt
+1. **Is this business logic?** → Put it in Domain layer
+2. **Is this orchestration?** → Put it in Application layer
+3. **Is this technical detail?** → Put it in Infrastructure layer
+4. **Is this HTTP-specific?** → Put it in Interfaces layer
+
+## 📚 Key Principles Summary
+- **Explicit is better than implicit**
+- **Simple is better than complex**
+- **Readability counts**
+- **Errors should never pass silently**
+- **In the face of ambiguity, refuse the temptation to guess**
+- **Business logic belongs in Domain, nowhere else**
+- **Always think: "Can I test this easily?"**
+
+## 🔄 Refactoring Guidelines
+- **Boy Scout Rule**: Leave code better than you found it
+- **Red-Green-Refactor**: Tests first, then implementation, then clean up
+- **Extract methods** when you see duplication
+- **Extract classes** when a class has multiple responsibilities
+- **Rename** anything with unclear naming immediately
+
+---
+
+**Remember**: Quality over speed. Write code that your future self will thank you for.
