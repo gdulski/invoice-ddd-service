@@ -6,6 +6,9 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Event;
+use Src\Domain\Events\InvoiceCreated;
+use Src\Domain\Events\InvoiceSent;
+use Src\Infrastructure\ExternalServices\InvoiceNotificationService;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -17,6 +20,12 @@ class EventServiceProvider extends ServiceProvider
     protected $listen = [
         Registered::class => [
             SendEmailVerificationNotification::class,
+        ],
+        InvoiceCreated::class => [
+            InvoiceNotificationService::class . '@handleInvoiceCreated',
+        ],
+        InvoiceSent::class => [
+            InvoiceNotificationService::class . '@handleInvoiceSent',
         ],
     ];
 
