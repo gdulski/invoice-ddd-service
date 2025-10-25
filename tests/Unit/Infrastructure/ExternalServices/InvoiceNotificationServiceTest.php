@@ -40,8 +40,7 @@ final class InvoiceNotificationServiceTest extends TestCase
         // Act
         $this->notificationService->handleInvoiceSent($event);
 
-        // Assert - Mockery expectations verify the call was made
-        $this->assertTrue(true);
+        $this->addToAssertionCount(1);
     }
 
     public function test_handle_invoice_created_logs_event(): void
