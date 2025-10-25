@@ -7,6 +7,8 @@ use Src\Domain\Services\HealthService;
 use Src\Domain\Services\InvoiceStatusTransition;
 use Src\Domain\Repositories\InvoiceRepositoryInterface;
 use Src\Infrastructure\Persistence\Repositories\EloquentInvoiceRepository;
+use Src\Infrastructure\ExternalServices\NotificationFacade;
+use Src\Infrastructure\ExternalServices\NotificationFacadeInterface;
 use Src\Application\Handlers\CreateInvoiceHandler;
 use Src\Application\Handlers\ViewInvoiceHandler;
 use Src\Application\Handlers\SendInvoiceHandler;
@@ -21,6 +23,7 @@ class DomainServiceProvider extends ServiceProvider
     {
         $this->app->singleton(HealthService::class);
         $this->app->singleton(InvoiceStatusTransition::class);
+        $this->app->singleton(NotificationFacadeInterface::class, NotificationFacade::class);
         
         // Repository bindings
         $this->app->bind(InvoiceRepositoryInterface::class, EloquentInvoiceRepository::class);
