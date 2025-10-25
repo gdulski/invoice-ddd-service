@@ -65,7 +65,8 @@ final class EloquentInvoiceRepository implements InvoiceRepositoryInterface
     
     private function mapToDomainEntity(InvoiceModel $invoiceModel): Invoice
     {
-        $invoice = new Invoice(
+        // Use reconstitute() factory method - allows any status when loading from persistence
+        $invoice = Invoice::reconstitute(
             new InvoiceId($invoiceModel->id),
             InvoiceStatus::from($invoiceModel->status),
             new CustomerName($invoiceModel->customer_name),

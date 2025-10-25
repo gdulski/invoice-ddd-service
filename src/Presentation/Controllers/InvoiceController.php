@@ -7,12 +7,15 @@ namespace Src\Presentation\Controllers;
 use Src\Application\DTOs\CreateInvoiceCommand;
 use Src\Application\DTOs\InvoiceLineDto;
 use Src\Application\DTOs\SendInvoiceCommand;
+use Src\Application\DTOs\UpdateInvoiceStatusCommand;
 use Src\Application\DTOs\ViewInvoiceQuery;
 use Src\Application\Handlers\CreateInvoiceHandler;
 use Src\Application\Handlers\SendInvoiceHandler;
+use Src\Application\Handlers\UpdateInvoiceStatusHandler;
 use Src\Application\Handlers\ViewInvoiceHandler;
 use Src\Presentation\Requests\CreateInvoiceRequest;
 use Src\Presentation\Requests\SendInvoiceRequest;
+use Src\Presentation\Requests\UpdateInvoiceStatusRequest;
 use Src\Presentation\Resources\InvoiceResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,23 +26,29 @@ final class InvoiceController
     public function __construct(
         private CreateInvoiceHandler $createInvoiceHandler,
         private ViewInvoiceHandler $viewInvoiceHandler,
-        private SendInvoiceHandler $sendInvoiceHandler
+        private SendInvoiceHandler $sendInvoiceHandler,
+        private UpdateInvoiceStatusHandler $updateInvoiceStatusHandler
     ) {}
 
     public function store(CreateInvoiceRequest $request): JsonResponse
     {
+        $validated = $request->validated();
         $lines = [];
-        foreach ($request->validated()['lines'] as $line) {
-            $lines[] = new InvoiceLineDto(
-                $line['product_name'],
-                $line['quantity'],
-                $line['unit_price_in_cents']
-            );
+        
+        // Lines are optional - invoice can be created with empty product lines
+        if (isset($validated['lines']) && is_array($validated['lines'])) {
+            foreach ($validated['lines'] as $line) {
+                $lines[] = new InvoiceLineDto(
+                    $line['product_name'],
+                    $line['quantity'],
+                    $line['unit_price_in_cents']
+                );
+            }
         }
 
         $command = new CreateInvoiceCommand(
-            $request->validated()['customer_name'],
-            $request->validated()['customer_email'],
+            $validated['customer_name'],
+            $validated['customer_email'],
             $lines
         );
 
@@ -63,6 +72,17 @@ final class InvoiceController
     {
         $command = new SendInvoiceCommand($id);
         $result = $this->sendInvoiceHandler->handle($command);
+
+        return response()->json(new InvoiceResource($result));
+    }
+
+    public function updateStatus(UpdateInvoiceStatusRequest $request, string $id): JsonResponse
+    {
+        $command = new UpdateInvoiceStatusCommand(
+            $id,
+            $request->validated()['status']
+        );
+        $result = $this->updateInvoiceStatusHandler->handle($command);
 
         return response()->json(new InvoiceResource($result));
     }

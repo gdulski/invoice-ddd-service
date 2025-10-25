@@ -11,4 +11,5 @@ Route::prefix('invoices')->group(function () {
     Route::post('/', [InvoiceController::class, 'store']);
     Route::get('/{id}', [InvoiceController::class, 'show']);
     Route::post('/{id}/send', [InvoiceController::class, 'send']);
+    Route::post('/{id}/status', [InvoiceController::class, 'updateStatus']);
 });

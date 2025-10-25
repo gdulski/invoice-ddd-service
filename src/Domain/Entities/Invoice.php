@@ -21,14 +21,24 @@ final class Invoice
     private array $lines = [];
     private array $domainEvents = [];
 
-    public function __construct(
+    private function __construct(
         private readonly InvoiceId $id,
         private InvoiceStatus $status,
         private readonly CustomerName $customerName,
         private readonly CustomerEmail $customerEmail,
-        private readonly \DateTimeImmutable $createdAt
+        private readonly \DateTimeImmutable $createdAt,
+        private bool $isReconstituted = false
     ) {
-        $this->addDomainEvent(new InvoiceCreated($this->id, $this->customerEmail));
+        // Business rule: Invoice can only be created in draft status
+        // Exception: when reconstituting from persistence, allow any status
+        if (!$isReconstituted && !$status->isDraft()) {
+            throw new InvalidArgumentException('Invoice can only be created in draft status');
+        }
+        
+        // Only emit InvoiceCreated event when creating new invoices (not when reconstituting)
+        if (!$isReconstituted) {
+            $this->addDomainEvent(new InvoiceCreated($this->id, $this->customerEmail));
+        }
     }
 
     public function id(): InvoiceId
@@ -90,13 +100,26 @@ final class Invoice
 
     public function canBeSent(): bool
     {
-        return $this->status->canBeSent() && !empty($this->lines);
+        if (!$this->status->canBeSent()) {
+            return false;
+        }
+        
+        // Invoice must have at least one line with positive quantity and unit price
+        if (empty($this->lines)) {
+            return false;
+        }
+        
+        return true;
     }
 
     public function send(): void
     {
-        if (!$this->canBeSent()) {
-            throw new InvalidArgumentException('Invoice cannot be sent in current state');
+        if (!$this->status->canBeSent()) {
+            throw new InvalidArgumentException('Invoice can only be sent if it is in draft status');
+        }
+        
+        if (empty($this->lines)) {
+            throw new InvalidArgumentException('To be sent, an invoice must contain product lines with both quantity and unit price as positive integers greater than zero');
         }
         
         $this->status = InvoiceStatus::SENDING;
@@ -127,6 +150,15 @@ final class Invoice
         $this->domainEvents[] = $event;
     }
 
+    /**
+     * Factory method for creating new invoices.
+     * Always creates invoices in DRAFT status.
+     * 
+     * @param CustomerName $customerName
+     * @param CustomerEmail $customerEmail
+     * @param array $lines Array of invoice lines with structure: ['productName' => ProductName, 'quantity' => Quantity, 'unitPrice' => Money]
+     * @return self
+     */
     public static function create(
         CustomerName $customerName,
         CustomerEmail $customerEmail,
@@ -145,6 +177,34 @@ final class Invoice
         }
 
         return $invoice;
+    }
+
+    /**
+     * Factory method for reconstituting invoices from persistence.
+     * Allows any status (used by repositories to hydrate entities).
+     * 
+     * @param InvoiceId $id
+     * @param InvoiceStatus $status
+     * @param CustomerName $customerName
+     * @param CustomerEmail $customerEmail
+     * @param \DateTimeImmutable $createdAt
+     * @return self
+     */
+    public static function reconstitute(
+        InvoiceId $id,
+        InvoiceStatus $status,
+        CustomerName $customerName,
+        CustomerEmail $customerEmail,
+        \DateTimeImmutable $createdAt
+    ): self {
+        return new self(
+            $id,
+            $status,
+            $customerName,
+            $customerEmail,
+            $createdAt,
+            true // isReconstituted = true allows any status
+        );
     }
 }
 

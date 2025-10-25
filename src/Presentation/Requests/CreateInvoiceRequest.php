@@ -18,10 +18,10 @@ final class CreateInvoiceRequest extends FormRequest
         return [
             'customer_name' => ['required', 'string', 'max:255'],
             'customer_email' => ['required', 'email', 'max:255'],
-            'lines' => ['required', 'array', 'min:1'],
-            'lines.*.product_name' => ['required', 'string', 'max:255'],
-            'lines.*.quantity' => ['required', 'integer', 'min:1'],
-            'lines.*.unit_price_in_cents' => ['required', 'integer', 'min:1'],
+            'lines' => ['nullable', 'array'],
+            'lines.*.product_name' => ['required_with:lines', 'string', 'max:255'],
+            'lines.*.quantity' => ['required_with:lines', 'integer', 'min:1'],
+            'lines.*.unit_price_in_cents' => ['required_with:lines', 'integer', 'min:1'],
         ];
     }
 
@@ -33,14 +33,13 @@ final class CreateInvoiceRequest extends FormRequest
             'customer_email.required' => 'Customer email is required',
             'customer_email.email' => 'Customer email must be a valid email address',
             'customer_email.max' => 'Customer email cannot exceed 255 characters',
-            'lines.required' => 'At least one invoice line is required',
-            'lines.min' => 'At least one invoice line is required',
-            'lines.*.product_name.required' => 'Product name is required for each line',
+            'lines.array' => 'Lines must be an array',
+            'lines.*.product_name.required_with' => 'Product name is required when lines are provided',
             'lines.*.product_name.max' => 'Product name cannot exceed 255 characters',
-            'lines.*.quantity.required' => 'Quantity is required for each line',
+            'lines.*.quantity.required_with' => 'Quantity is required when lines are provided',
             'lines.*.quantity.integer' => 'Quantity must be an integer',
             'lines.*.quantity.min' => 'Quantity must be positive',
-            'lines.*.unit_price_in_cents.required' => 'Unit price is required for each line',
+            'lines.*.unit_price_in_cents.required_with' => 'Unit price is required when lines are provided',
             'lines.*.unit_price_in_cents.integer' => 'Unit price must be an integer',
             'lines.*.unit_price_in_cents.min' => 'Unit price must be positive',
         ];

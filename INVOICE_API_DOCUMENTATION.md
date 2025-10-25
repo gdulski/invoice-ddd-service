@@ -214,23 +214,26 @@ Events are handled by the `InvoiceNotificationService` which logs the events and
 ### Invoice Creation
 - Customer name: Required, max 255 characters
 - Customer email: Required, valid email format, max 255 characters
-- Lines: Required, minimum 1 line
-- Product name: Required, max 255 characters
-- Quantity: Required, positive integer
-- Unit price: Required, positive integer (in cents)
+- Lines: Optional (can be empty or omitted)
+- Product name: Required when lines are provided, max 255 characters
+- Quantity: Required when lines are provided, must be positive integer (> 0)
+- Unit price: Required when lines are provided, must be positive integer (> 0) in cents
 
 ### Invoice Sending
 - Invoice must exist
 - Invoice must be in `draft` status
-- Invoice must have at least one line
+- Invoice must contain at least one product line with both quantity and unit price as positive integers greater than zero
 
 ## 🎯 Business Rules
 
 1. **Invoice Status Flow**: `draft` → `sending` → `sent-to-client`
-2. **Sending Constraints**: Only `draft` invoices can be sent
-3. **Line Requirements**: Invoices must have at least one product line
-4. **Price Calculations**: All prices are stored in cents to avoid floating-point precision issues
-5. **Immutable Value Objects**: All domain value objects are immutable and validate their state
+2. **Invoice Creation**: An invoice can only be created in draft status
+3. **Empty Lines**: An invoice can be created with empty product lines
+4. **Sending Constraints**: An invoice can only be sent if it is in draft status and contains product lines
+5. **Product Lines**: To be sent, an invoice must contain product lines with both quantity and unit price as positive integers greater than zero
+6. **Status Transition**: An invoice can only be marked as sent-to-client if its current status is sending
+7. **Price Calculations**: All prices are stored in cents to avoid floating-point precision issues
+8. **Immutable Value Objects**: All domain value objects are immutable and validate their state
 
 ## 🚀 Deployment
 
