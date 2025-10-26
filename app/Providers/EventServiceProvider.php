@@ -8,6 +8,8 @@ use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvi
 use Illuminate\Support\Facades\Event;
 use Src\Domain\Events\InvoiceCreated;
 use Src\Domain\Events\InvoiceSent;
+use Src\Domain\Events\NotificationDelivered;
+use Src\Application\Listeners\NotificationDeliveredListener;
 use Src\Infrastructure\ExternalServices\InvoiceNotificationService;
 
 class EventServiceProvider extends ServiceProvider
@@ -26,6 +28,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         InvoiceSent::class => [
             InvoiceNotificationService::class . '@handleInvoiceSent',
+        ],
+        NotificationDelivered::class => [
+            NotificationDeliveredListener::class,
         ],
     ];
 
