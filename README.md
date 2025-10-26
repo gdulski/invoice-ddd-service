@@ -4,22 +4,22 @@ A Laravel application built with Domain-Driven Design (DDD) principles, fully co
 
 ## 🚀 Quick Start
 
-### Opcja 1: Używając Makefile (zalecane)
+### Option 1: Using Makefile (Recommended)
 ```bash
 make start
 ```
 
-### Opcja 2: Używając skryptu start.sh (używa Docker Compose v2)
+### Option 2: Using start.sh script (uses Docker Compose v2)
 ```bash
 ./start.sh
 ```
 
-### Opcja 3: Ręcznie z docker compose
+### Option 3: Manually with docker compose
 ```bash
 docker compose up -d
 ```
 
-**Uwaga**: Projekt używa Docker Compose v2 (najnowsza wersja z pełnym wsparciem).
+**Note**: The project uses Docker Compose v2 (latest version with full support).
 
 ## 🏗️ Architecture
 
@@ -195,47 +195,61 @@ The application uses environment variables for configuration. Copy `env.example`
 ## 📦 Dependencies
 
 - PHP 8.2+
-- Laravel 10.x
+- Laravel 12.x
 - MySQL 8.0
 - Nginx
 - Composer
 
-## 🎯 Features Implemented
+## 🎯 Domain-Driven Design Implementation
 
-✅ **Domain-Driven Design Architecture**
-- Clean layered architecture (Domain → Application → Infrastructure → Interfaces)
-- Rich domain models with business logic
-- Value objects for type safety
-- Domain events for loose coupling
+This project is built using **Domain-Driven Design (DDD)** principles to ensure clean architecture, maintainability, and scalability. Here's how DDD is implemented:
 
-✅ **Invoice Management System**
-- Create invoices with customer data and product lines
-- View invoice details
-- Send invoices (status change from draft to sending)
-- Automatic price calculations
+### Why DDD?
 
-✅ **API Endpoints**
-- RESTful API with proper HTTP status codes
-- JSON request/response format
-- Input validation with detailed error messages
-- Health check endpoint
+This invoice management system uses DDD to separate business logic from technical concerns. The domain layer (core business logic) is completely independent of Laravel, the database, and other infrastructure details. This allows the business rules to be tested, understood, and maintained independently of technical implementation.
 
-✅ **Testing Suite**
-- Unit tests for domain layer
-- Feature tests for API endpoints
-- Test database isolation (SQLite in memory)
-- Comprehensive test coverage
+### How DDD is Realized:
 
-✅ **Docker Containerization**
-- Multi-container setup (app, nginx, database)
-- Development-ready environment
-- Easy deployment and scaling
+**1. Rich Domain Models with Behavior**
+- The `Invoice` entity contains business logic, not just data
+- Business rules are encapsulated in entities (e.g., `canBeSent()`, `send()`, `markAsSentToClient()`)
+- Entities protect their invariants - they never allow invalid states
 
-✅ **Developer Experience**
-- Makefile with common commands
-- Database migration management
-- Comprehensive documentation
-- Ready-to-use curl examples
+**2. Value Objects for Type Safety**
+- Domain concepts are represented as immutable value objects (`Money`, `Quantity`, `InvoiceStatus`, `CustomerEmail`, etc.)
+- Prevents primitive obsession and invalid data structures
+- Ensures compile-time type safety and domain validation
+
+**3. Event-Driven Architecture**
+- Domain events (`InvoiceCreated`, `InvoiceSent`, `NotificationDelivered`) represent business occurrences
+- Events enable loose coupling between components
+- Status transitions are driven by domain events, not direct method calls
+
+**4. Layered Architecture with Dependency Inversion**
+- **Domain Layer**: Pure business logic, no framework dependencies
+- **Application Layer**: Orchestrates domain objects to fulfill use cases
+- **Infrastructure Layer**: Implements technical details (database, notifications)
+- **Interface Layer**: HTTP controllers, validation, response formatting
+- Dependencies point inward - Domain has zero external dependencies
+
+**5. Repository Pattern**
+- Domain layer depends on `InvoiceRepositoryInterface`, not concrete implementation
+- Persistence details are hidden from business logic
+- Domain can be tested without database using in-memory implementations
+
+**6. Application Services Pattern**
+- Commands and Queries encapsulate use cases
+- Handlers coordinate domain objects and infrastructure
+- Thin orchestration layer with no business logic
+
+### Practical Example: Invoice Status Flow
+
+The invoice goes through states that represent business concepts:
+- `DRAFT` → Invoice created but not sent
+- `SENDING` → Send command triggered, notification in progress
+- `SENT_TO_CLIENT` → Notification confirmed delivered
+
+These transitions are driven by domain events and business rules, not arbitrary database updates. The domain ensures only valid state transitions occur.
 
 ## 📚 Resources
 
